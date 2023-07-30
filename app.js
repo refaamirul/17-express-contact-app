@@ -1,6 +1,7 @@
 const express = require('express');
 const expressLayouts = require('express-ejs-layouts');
-const { loadContact, findContact } = require('./utils/contacts');
+const { loadContact, findContact, addContact, cekDuplikat } = require('./utils/contacts');
+const { body, validationResult, check } = require('express-validator');
 const req = require('express/lib/request');
 const res = require('express/lib/response');
 const app = express();
@@ -14,6 +15,8 @@ app.use(expressLayouts);
 
 // Build-in middleware
 app.use(express.static('public'));
+
+app.use(express.urlencoded({ extended: true }));
 
 app.get('/', (req, res) => {
   // res.sendFile('./index.html', { root: __dirname });
@@ -55,6 +58,45 @@ app.get('/contact', (req, res) => {
   });
 });
 
+// halaman form tambah data contact
+app.get('/contact/add', (req, res) => {
+  res.render('add-contact', {
+    title: 'Form Tambah Data Contact',
+    layout: 'layouts/main-layout',
+  });
+});
+
+// proses data contact
+app.post(
+  '/contact',
+  [
+    body('nama').custom((value) => {
+      const duplikat = cekDuplikat(value);
+      if (duplikat) {
+        throw new Error('Nama contact sudah digunakan!');
+      }
+      return true;
+    }),
+    check('email', 'Email tidak valid!').isEmail(),
+    check('noHP', 'No HP tidak valid!').isMobilePhone('id-ID'),
+  ],
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      // return res.status(400).json({ errors: errors.array() });
+      res.render('add-contact', {
+        title: 'Form Tambah Data Contact',
+        layout: 'layouts/main-layout',
+        errors: errors.array(),
+      })
+    } else {
+      addContact(req.body);
+      res.redirect('/contact');
+    }
+  }
+);
+
+// halaman detail contact
 app.get('/contact/:nama', (req, res) => {
   const contact = findContact(req.params.nama);
   res.render('detail', {
