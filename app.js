@@ -2,6 +2,9 @@ const express = require('express');
 const expressLayouts = require('express-ejs-layouts');
 const { loadContact, findContact, addContact, cekDuplikat } = require('./utils/contacts');
 const { body, validationResult, check } = require('express-validator');
+const session = require('express-session');
+const cookieParser = require('cookie-parser');
+const flash = require('connect-flash');
 const req = require('express/lib/request');
 const res = require('express/lib/response');
 const app = express();
@@ -17,6 +20,18 @@ app.use(expressLayouts);
 app.use(express.static('public'));
 
 app.use(express.urlencoded({ extended: true }));
+
+// konfigurasi flash
+app.use(cookieParser('secret'));
+app.use(
+  session({
+    cookie: { maxAge: 6000 },
+    secret: 'secret',
+    resave: true,
+    saveUninitialized: true,
+  })
+);
+app.use(flash());
 
 app.get('/', (req, res) => {
   // res.sendFile('./index.html', { root: __dirname });
@@ -55,6 +70,7 @@ app.get('/contact', (req, res) => {
     title: 'Halaman Contact',
     layout: 'layouts/main-layout',
     contacts,
+    msg: req.flash('msg'),
   });
 });
 
@@ -88,9 +104,11 @@ app.post(
         title: 'Form Tambah Data Contact',
         layout: 'layouts/main-layout',
         errors: errors.array(),
-      })
+      });
     } else {
       addContact(req.body);
+      // kirimkan flash message
+      req.flash('msg', 'Data contact berhasil ditambahkan!');
       res.redirect('/contact');
     }
   }
